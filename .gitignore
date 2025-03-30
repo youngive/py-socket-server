@@ -1,0 +1,24 @@
+# Python virtual environment
+.venv/
+venv/
+
+# IDE - VSCode
+.vscode/
+
+# Logs directory
+bin/logs/
+
+# Build directory
+dist/
+
+# Python cache and metadata
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+*.egg-info/
+*.egg
+py_socket_server.egg-info/
