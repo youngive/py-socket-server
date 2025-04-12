@@ -16,7 +16,7 @@ class BaseProtocol:
         """Abstract method for handling output callbacks."""
         raise NotImplementedError("Subclasses should implement this method.")
 
-    async def on_stop_callback(self) -> None:
+    async def on_stop_callback(self, closed=False) -> None:
         """Abstract method for handling stop callbacks."""
         raise NotImplementedError("Subclasses should implement this method.")
 
@@ -25,6 +25,10 @@ class BaseProtocol:
         raise NotImplementedError("Subclasses should implement this method.")
 
     async def on_event_emit_callback(self, event_name, *args):
+        """Abstract method for handling event emit callbacks."""
+        raise NotImplementedError("Subclasses should implement this method.")
+    
+    async def on_policy_callback(self):
         """Abstract method for handling event emit callbacks."""
         raise NotImplementedError("Subclasses should implement this method.")
 
@@ -100,6 +104,12 @@ class BaseProtocol:
             await self.on_output_callback(xml.encode())
         except Exception as error:
             return f'Parse message error: {error}'
+
+    async def send_policy_file(self, port):
+        """Sends a policy file."""
+        await self.on_output_callback(f'<cross-domain-policy><allow-access-from domain="*" to-ports="'
+                             f'{port}" /></cross-domain-policy>'.encode())
+        await self.on_stop_callback(True)
 
     async def call_status(self, code, desc, error_code=None):
         """Sends a status response."""

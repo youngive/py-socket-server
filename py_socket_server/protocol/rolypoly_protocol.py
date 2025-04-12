@@ -1,4 +1,5 @@
 import json
+import defusedxml.cElementTree as Et
 #import logging
 from py_socket_server.protocol.base_protocol import BaseProtocol, END_MARKER
 from py_socket_server.core.spacket import SPacket
@@ -35,17 +36,35 @@ class RolyPolyProtocol(BaseProtocol):
         await self.call("_B", result)
 
     async def socket_invoke_handler(self, data: str):
-        """Handles invocation of received data."""
-        try:
-            invoke_message = json.loads(data)
-        except json.JSONDecodeError as e:
-            return 'Disconnected due to message parsing error'
+        """
+        Handles invocation of received data.
+        Returns status message about the processing result.
+        """
+        if not data:
+            return 'Disconnected - empty message received'
+        
+        if data.startswith('<'):
+            try:
+                element_tree = Et.fromstring(data)
+
+                if element_tree.tag == 'policy-file-request':
+                    await self.on_policy_callback()
+                    return
+                    
+                return 'Disconnected - unexpected XML message'
+            except Et.ParseError as xml_error:
+                return 'Disconnected due to XML parsing error'
+        else:
+            try:
+                invoke_message = json.loads(data)
+            except json.JSONDecodeError as e:
+                return 'Disconnected due to message parsing error'
 
         #logging.info(invoke_message)
 
         command = invoke_message[0]
         if command in self.custom_commands:
-            self.custom_commands[command](invoke_message)
+            await self.custom_commands[command](self, invoke_message)
             return
 
         handlers = {
@@ -73,51 +92,47 @@ class RolyPolyProtocol(BaseProtocol):
             return f'Disconnected due to unimplemented cmd {command}'
 
     async def on_SOO(self, invoke_message):
-        await self.on_event_emit_callback('_SOO', invoke_message[1], invoke_message[2], invoke_message[3])
+        await self.on_event_emit_callback('_SOO', invoke_message)
 
     async def on_resolve(self, invoke_message):
-        await self.on_event_emit_callback('__resolve', invoke_message[1])
+        await self.on_event_emit_callback('__resolve', invoke_message)
 
     async def on_P(self, invoke_message):
-        await self.on_event_emit_callback('_P', invoke_message[1], invoke_message[2], invoke_message[3])
+        await self.on_event_emit_callback('_P', invoke_message)
 
     async def on_LS(self, invoke_message):
         #logging.info(json.dumps(invoke_message))
-        await self.on_event_emit_callback('_LS', invoke_message[1], invoke_message[2], invoke_message[3],
-                                   lambda result: self.call("_LS", result))
+        await self.on_event_emit_callback('_LS', invoke_message, lambda result: self.call("_LS", result))
 
     async def on_LG(self, invoke_message):
         #logging.info(json.dumps(invoke_message))
-        await self.on_event_emit_callback('_LG', invoke_message[1], invoke_message[2], invoke_message[3],
-                                   invoke_message[4], self.respond_cmd)
+        await self.on_event_emit_callback('_LG', invoke_message, self.respond_cmd)
 
     async def on_S(self, invoke_message):
-        await self.on_event_emit_callback('_S', invoke_message[1])
+        await self.on_event_emit_callback('_S', invoke_message)
 
     async def on_SS(self, invoke_message):
-        await self.on_event_emit_callback('_SS', invoke_message[1])
+        await self.on_event_emit_callback('_SS', invoke_message)
 
     async def on_SCA(self, invoke_message):
-        await self.on_event_emit_callback('_SCA', invoke_message[1], invoke_message[2], self.respond_cmd)
+        await self.on_event_emit_callback('_SCA', invoke_message, self.respond_cmd)
 
     async def on_NSF(self, invoke_message):
         await self.on_event_emit_callback('_NSF')
 
     async def on_sigil(self, invoke_message):
         #logging.info(json.dumps(invoke_message))
-        await self.on_event_emit_callback('$', invoke_message[1], invoke_message[2], invoke_message[3],
-                                   invoke_message[4], invoke_message[5], self.respond_cmd)
+        await self.on_event_emit_callback('$', invoke_message, self.respond_cmd)
 
     async def on_SCD(self, invoke_message):
-        await self.on_event_emit_callback('_SCD', invoke_message[1], self.respond_cmd)
+        await self.on_event_emit_callback('_SCD', invoke_message, self.respond_cmd)
 
     async def on_RCD(self, invoke_message):
         await self.on_event_emit_callback('_RCD', self.respond_cmd)
 
     async def on_SCT(self, invoke_message):
-        await self.on_event_emit_callback('_SCT', invoke_message[1], self.respond_cmd)
+        await self.on_event_emit_callback('_SCT', invoke_message, self.respond_cmd)
 
     async def on_G(self, invoke_message):
         #logging.info(json.dumps(invoke_message))
-        await self.on_event_emit_callback('_G', invoke_message[1], invoke_message[2],
-                                    lambda result: self.call("_G", result))
+        await self.on_event_emit_callback('_G', invoke_message, lambda result: self.call("_G", result))

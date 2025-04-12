@@ -76,7 +76,7 @@ class PySocketServer:
         
         await asyncio.gather(*tasks)
 
-    def on(self, event_name, listener):
+    async def on(self, event_name, listener):
         self.ctx.py_event.on(event_name, listener)
 
     async def stop(self):

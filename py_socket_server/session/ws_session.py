@@ -11,12 +11,13 @@ class WsSession(BaseSession):
         self.ctx = ctx
         self.socket = socket
         self.ip = socket.remote_address[0]
-        self.is_local = self.ip in ['127.0.0.1', '::1', '::ffff:127.0.0.1'] or self.ip.startswith('192.')
+        self.is_local = self.ip in ['127.0.0.1', '::1', '::ffff:127.0.0.1']
 
-        self.ping_time = ctx.config['ws']['ping'] * 1000 if ctx.config['ws'].get('ping') else self.ping_time
-        self.ping_timeout = ctx.config['ws']['ping_timeout'] * 1000 if ctx.config['ws'].get('ping_timeout') else self.ping_timeout
 
         self.protocol = "ws"
+        self.ping_time = ctx.config[self.protocol]['ping'] * 1000 if ctx.config[self.protocol].get('ping') else self.ping_time
+        self.ping_timeout = ctx.config[self.protocol]['ping_timeout'] * 1000 if ctx.config[self.protocol].get('ping_timeout') else self.ping_timeout
+
         self.bp = RolyPolyProtocol()
 
         self.ctx.sessions[self.id] = self
@@ -49,10 +50,7 @@ class WsSession(BaseSession):
                 await self.on_error(e)
                 break
 
-        try:
-            await self.on_close()
-        except Exception as e:
-            self.ctx.logger.error(f"Session {self.id} socket error, {e.__class__.__name__}: {str(e)}")
+        await self.on_close()
 
     async def stop(self, closed=False):
         if self.socket is None: return

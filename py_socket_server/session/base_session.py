@@ -1,6 +1,6 @@
-import asyncio
 import os
 import math
+import traceback
 from typing import Any
 
 from py_socket_server.core.context import Context
@@ -86,7 +86,12 @@ class BaseSession:
             await self.stop()
 
     async def on_error(self, error):
+        tb = traceback.extract_tb(error.__traceback__)
+        filename, lineno, funcname, text = tb[-1]
+
         self.ctx.logger.error(f"Session {self.id} socket error, {error.__class__.__name__}: {str(error)}")
+        self.ctx.logger.error(f"Error occurred in file: {filename}, line: {lineno}, function: {funcname}, text: {text}")
+        
         await self.stop(True)
 
     async def on_timeout(self):
@@ -96,7 +101,7 @@ class BaseSession:
     async def accept_connection(self):
         await self.bp.call_status('NetConnection.Connect.Success', 'Connection succeeded.')
 
-    async def reject_connection(self, error_code):
+    async def reject_connection(self, error_code = None):
         await self.bp.call_status('NetConnection.Connect.Rejected', 'Connection rejected.', error_code)
         await self.reject()
 
@@ -105,6 +110,12 @@ class BaseSession:
 
     async def call(self, *args):
         await self.bp.call(*args)
+
+    async def call_xml(self, data, uid):
+        await self.bp.call_xml(data, uid)
+
+    async def send_policy_file(self):
+        pass
 
     async def run(self):
         raise NotImplementedError("Subclasses should implement this!")

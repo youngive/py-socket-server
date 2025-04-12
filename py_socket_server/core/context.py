@@ -1,4 +1,4 @@
-from pyee import EventEmitter
+from pyee.asyncio import AsyncIOEventEmitter
 import logging
 
 default = {
@@ -34,6 +34,6 @@ class Context:
 
         self.sessions = {}
 
-        self.py_event = EventEmitter()
+        self.py_event = AsyncIOEventEmitter()
 
         self.logger = logging.getLogger('py-socket-server')

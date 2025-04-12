@@ -12,9 +12,10 @@ setuptools.setup(
     install_requires = [
         "events",
         "websockets",
-        "pyee"
+        "pyee",
+        "defusedxml"
     ],
-    version = "1.0.0",
+    version = "1.2.0",
     license = "MIT",
     long_description=long_description,
     long_description_content_type='text/markdown',

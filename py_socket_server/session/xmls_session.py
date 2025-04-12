@@ -11,12 +11,12 @@ class XmlsSession(BaseSession):
         self.socket = writer.get_extra_info('socket')
         
         self.ip = self.socket.getpeername()[0] if writer else ""
-        self.is_local = self.ip in ['127.0.0.1', '::1', '::ffff:127.0.0.1'] or self.ip.startswith('192.')
-
-        self.ping_time = (ctx.config['xmls']['ping'] * 1000) if ctx.config['xmls'].get('ping') else None
-        self.ping_timeout = (ctx.config['xmls']['ping_timeout'] * 1000) if ctx.config['xmls'].get('ping_timeout') else None
+        self.is_local = self.ip in ['127.0.0.1', '::1', '::ffff:127.0.0.1']
 
         self.protocol = "xmls"
+        self.ping_time = (ctx.config[self.protocol]['ping'] * 1000) if ctx.config[self.protocol].get('ping') else None
+        self.ping_timeout = (ctx.config[self.protocol]['ping_timeout'] * 1000) if ctx.config[self.protocol].get('ping_timeout') else None
+
         self.bp = RolyPolyProtocol()
 
         self.ctx.sessions[self.id] = self
@@ -26,6 +26,7 @@ class XmlsSession(BaseSession):
     async def run(self):
         self.bp.on_connect_callback = self.on_connect
         self.bp.on_output_callback = self.on_output
+        self.bp.on_policy_callback = self.on_policy
         self.bp.on_stop_callback = self.on_stop
         self.bp.on_event_emit_callback = self.on_event_emit
 
@@ -82,6 +83,10 @@ class XmlsSession(BaseSession):
             else:
                 self.ctx.logger.warning('Ping time is not set. Skipping ping request.')
                 await asyncio.sleep(1)
+
+    async def on_policy(self):
+        await self.bp.send_policy_file(self.ctx.config[self.protocol]['port'])
+        await self.stop(True)
 
     async def on_event_emit(self, event_name, *args):
         """ Emit an event with the given name and arguments. """
