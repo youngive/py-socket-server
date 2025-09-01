@@ -14,7 +14,7 @@ class WsSession(BaseSession):
         self.is_local = self.ip in ['127.0.0.1', '::1', '::ffff:127.0.0.1']
 
 
-        self.protocol = "ws"
+        self.protocol = "wss" if ctx.config.get('wss') is not None else "ws"
         self.ping_time = ctx.config[self.protocol]['ping'] * 1000 if ctx.config[self.protocol].get('ping') else self.ping_time
         self.ping_timeout = ctx.config[self.protocol]['ping_timeout'] * 1000 if ctx.config[self.protocol].get('ping_timeout') else self.ping_timeout
 
@@ -61,11 +61,11 @@ class WsSession(BaseSession):
 
         self.ctx.logger.info(f"[socket disconnect] id={self.id} closed={closed}")
 
-        self.ctx.py_event.emit('doneConnect', self.id, self.ctx)
+        self.ctx.py_event.emit('doneConnect', self, self.ctx)
 
         if closed == False: await self.bp.call_status('NetConnection.Connect.Closed', 'Connection closed.')
 
-        del self.ctx.sessions[self.id]
+        if self.id in self.ctx.sessions: del self.ctx.sessions[self.id]
 
         await self.socket.close()
         self.socket = None

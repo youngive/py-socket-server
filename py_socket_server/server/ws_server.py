@@ -7,16 +7,18 @@ from py_socket_server.session.ws_session import WsSession
 class PyWsServer:
     def __init__(self, ctx: Context):
         self.ctx = ctx
+        self.ws_server_instance = None
+        self.wss_server_instance = None
 
         # HTTP WebSocket (ws) Server
         self.ws_server = None
         if ctx.config.get('ws') and ctx.config['ws'].get('port'):
             try:
                 self.ws_server = websockets.serve(
-                self.handle_connection,
-                ctx.config['ws'].get('bind'),
-                ctx.config['ws'].get('port')
-            )
+                    self.handle_connection,
+                    ctx.config['ws'].get('bind'),
+                    ctx.config['ws'].get('port')
+                )
             except Exception as e:
                 self.ctx.logger.error(f'Caught Exception: {e}')
 
@@ -41,12 +43,12 @@ class PyWsServer:
 
     async def run(self):
         if self.ws_server:
+            self.ws_server_instance = await self.ws_server
             self.ctx.logger.info(f"WebSocket Server listening on {self.ctx.config['ws']['bind']}:{self.ctx.config['ws']['port']}")
-            await self.ws_server
 
         if self.wss_server:
+            self.wss_server_instance = await self.wss_server
             self.ctx.logger.info(f"Secure WebSocket Server listening on {self.ctx.config['wss']['bind']}:{self.ctx.config['wss']['port']}")
-            await self.wss_server
 
     async def handle_connection(self, websocket: websockets.ServerConnection):
         """
@@ -56,19 +58,24 @@ class PyWsServer:
         session = WsSession(self.ctx, websocket)
         await session.run()
 
-
     async def stop(self):
-        if self.ws_server:
-            server = await self.ws_server
-            server.close()
-            await server.wait_closed()
+        if self.ws_server_instance:
+            self.ws_server_instance.close()
+            await self.ws_server_instance.wait_closed()
+            self.ws_server_instance = None
+            self.ctx.logger.info("WS Server closed gracefully.")
 
-        if self.wss_server:
-            server = await self.wss_server
-            server.close()
-            await server.wait_closed()
+        if self.wss_server_instance:
+            self.wss_server_instance.close()
+            await self.wss_server_instance.wait_closed()
+            self.wss_server_instance = None
+            self.ctx.logger.info("WSS Server closed gracefully.")
 
         # Stop all sessions
-        for session in self.ctx.sessions.values():
-            if session.protocol == "ws":
-                await session.stop()
+        sessions_to_stop = list(self.ctx.sessions.values())
+        for session in sessions_to_stop:
+            if session and (session.protocol == "ws" or session.protocol == "wss"):
+                try:
+                    await session.stop()
+                except Exception as e:
+                    self.ctx.logger.error(f"Error stopping WS session: {e}")

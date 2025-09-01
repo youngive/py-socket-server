@@ -114,9 +114,6 @@ class BaseSession:
     async def call_xml(self, data, uid):
         await self.bp.call_xml(data, uid)
 
-    async def send_policy_file(self):
-        pass
-
     async def run(self):
         raise NotImplementedError("Subclasses should implement this!")
 
